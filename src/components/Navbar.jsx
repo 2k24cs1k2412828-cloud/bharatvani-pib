@@ -6,9 +6,9 @@ import {
   Moon, 
   Sprout, 
   ZoomIn, 
-  Bookmark,
-  ShieldCheck,
-  FileText
+  Bookmark, 
+  FileText, 
+  LogIn
 } from 'lucide-react';
 import { translations } from '../translations';
 
@@ -26,6 +26,10 @@ export default function Navbar({
   bookmarkCount,
   activeCategory,
   setActiveCategory,
+  user,
+  onOpenAuth,
+  onOpenProfile,
+  onOpenLanguageModal,
 }) {
   const t = translations[lang];
 
@@ -36,10 +40,14 @@ export default function Navbar({
   };
 
   const cycleFont = () => {
-    if (fontScale === 1) setFontScale(1.15);
-    else if (fontScale === 1.15) setFontScale(1.25);
-    else setFontScale(1);
+    if (fontScale <= 0.95) setFontScale(1);
+    else if (fontScale <= 1.05) setFontScale(1.15);
+    else setFontScale(0.9);
   };
+
+  const userMeta = user?.user_metadata || {};
+  const avatarUrl = userMeta.avatar_url || userMeta.picture;
+  const displayName = userMeta.full_name || userMeta.name || user?.email?.split('@')[0];
 
   return (
     <header className="header-masthead">
@@ -51,101 +59,180 @@ export default function Navbar({
       </div>
 
       {/* Main Masthead Bar */}
-      <div className="container" style={{ padding: '0.75rem 1.25rem' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem' }}>
+      <div className="container" style={{ padding: '0.65rem 1.25rem' }}>
+        <div className="navbar-main-wrap">
           
           {/* Official Emblem & Portal Title */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
-            <div style={{
-              width: '42px',
-              height: '42px',
-              borderRadius: 'var(--radius-sm)',
-              background: 'var(--gov-navy)',
-              color: '#ffffff',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontWeight: '900',
-              fontSize: '1.2rem',
-              flexShrink: 0,
-            }}>
-              🇮🇳
+          <div className="navbar-header-left">
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+              <div style={{
+                width: '38px',
+                height: '38px',
+                borderRadius: 'var(--radius-sm)',
+                background: 'var(--gov-navy)',
+                color: '#ffffff',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontWeight: '900',
+                fontSize: '1.15rem',
+                flexShrink: 0,
+              }}>
+                🇮🇳
+              </div>
+
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
+                  <h1 style={{
+                    fontSize: '1.2rem',
+                    fontWeight: '800',
+                    color: 'var(--text-primary)',
+                    letterSpacing: '-0.01em',
+                    margin: 0,
+                  }}>
+                    {t.appTitle}
+                  </h1>
+                  <span style={{
+                    fontSize: '0.68rem',
+                    fontWeight: '700',
+                    color: 'var(--gov-navy)',
+                    background: 'var(--gov-navy-light)',
+                    border: '1px solid var(--gov-navy-border)',
+                    padding: '0.12rem 0.4rem',
+                    borderRadius: 'var(--radius-sm)',
+                    textTransform: 'uppercase',
+                  }}>
+                    PIB GOI
+                  </span>
+                </div>
+                <p style={{
+                  fontSize: '0.76rem',
+                  color: 'var(--text-muted)',
+                  margin: 0,
+                  fontWeight: '500',
+                }}>
+                  {t.appSubtitle}
+                </p>
+              </div>
             </div>
 
-            <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <h1 style={{
-                  fontSize: '1.25rem',
-                  fontWeight: '800',
-                  color: 'var(--text-primary)',
-                  letterSpacing: '-0.01em',
-                  margin: 0,
-                }}>
-                  {t.appTitle}
-                </h1>
-                <span style={{
-                  fontSize: '0.72rem',
-                  fontWeight: '700',
-                  color: 'var(--gov-navy)',
-                  background: 'var(--gov-navy-light)',
-                  border: '1px solid var(--gov-navy-border)',
-                  padding: '0.15rem 0.45rem',
-                  borderRadius: 'var(--radius-sm)',
-                  textTransform: 'uppercase',
-                }}>
-                  PIB GOI
-                </span>
-              </div>
-              <p style={{
-                fontSize: '0.8rem',
-                color: 'var(--text-muted)',
-                margin: 0,
-                fontWeight: '500',
-              }}>
-                {t.appSubtitle}
-              </p>
+            {/* Mobile-only Top Profile Button */}
+            <div className="navbar-mobile-user">
+              {user ? (
+                <button
+                  onClick={onOpenProfile}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '5px',
+                    background: 'var(--bg-subtle)',
+                    border: '1px solid var(--border-color)',
+                    borderRadius: '999px',
+                    padding: '2px 8px 2px 2px',
+                    cursor: 'pointer',
+                  }}
+                  title="Profile & Settings"
+                >
+                  {avatarUrl ? (
+                    <img
+                      src={avatarUrl}
+                      alt={displayName}
+                      style={{
+                        width: '26px',
+                        height: '26px',
+                        borderRadius: '50%',
+                        objectFit: 'cover',
+                      }}
+                    />
+                  ) : (
+                    <div
+                      style={{
+                        width: '26px',
+                        height: '26px',
+                        borderRadius: '50%',
+                        background: 'var(--gov-navy)',
+                        color: '#fff',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontSize: '0.74rem',
+                        fontWeight: '700',
+                      }}
+                    >
+                      {displayName?.[0]?.toUpperCase() || 'U'}
+                    </div>
+                  )}
+                  <span style={{ fontSize: '0.78rem', fontWeight: '700', color: 'var(--text-primary)', maxWidth: '70px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {displayName?.split(' ')[0] || 'Citizen'}
+                  </span>
+                </button>
+              ) : (
+                <button
+                  onClick={onOpenAuth}
+                  className="btn btn-secondary"
+                  style={{
+                    padding: '0.3rem 0.6rem',
+                    fontSize: '0.76rem',
+                    fontWeight: '700',
+                    color: 'var(--gov-navy)',
+                    borderColor: 'var(--border-dark)',
+                    background: 'var(--gov-navy-light)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                  }}
+                >
+                  <LogIn size={12} />
+                  <span>लॉग इन</span>
+                </button>
+              )}
             </div>
           </div>
 
-          {/* Right Action Controls (Clean Editorial Toolbar) */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap' }}>
+          {/* Action Controls Row */}
+          <div className="navbar-actions-row">
             
-            {/* Bilingual Toggle (हिंदी / English) */}
+            {/* Multilingual Selector */}
             <div style={{
               display: 'inline-flex',
+              alignItems: 'center',
               background: 'var(--bg-subtle)',
               border: '1px solid var(--border-color)',
               borderRadius: 'var(--radius-sm)',
               padding: '2px',
+              gap: '2px',
+              flexShrink: 0,
             }}>
-              <button
-                onClick={() => setLang('hi')}
-                style={{
-                  padding: '0.35rem 0.75rem',
-                  fontSize: '0.82rem',
-                  fontWeight: lang === 'hi' ? '700' : '500',
-                  color: lang === 'hi' ? '#ffffff' : 'var(--text-secondary)',
-                  background: lang === 'hi' ? 'var(--gov-navy)' : 'transparent',
-                  borderRadius: 'var(--radius-sm)',
-                  transition: 'all var(--transition-fast)',
-                }}
-              >
-                हिंदी
-              </button>
-              <button
-                onClick={() => setLang('en')}
-                style={{
-                  padding: '0.35rem 0.75rem',
-                  fontSize: '0.82rem',
-                  fontWeight: lang === 'en' ? '700' : '500',
-                  color: lang === 'en' ? '#ffffff' : 'var(--text-secondary)',
-                  background: lang === 'en' ? 'var(--gov-navy)' : 'transparent',
-                  borderRadius: 'var(--radius-sm)',
-                  transition: 'all var(--transition-fast)',
-                }}
-              >
-                English
-              </button>
+              <Globe
+                size={13}
+                onClick={onOpenLanguageModal}
+                style={{ color: 'var(--gov-navy)', margin: '0 2px 0 5px', flexShrink: 0, cursor: 'pointer' }}
+                title="Change Language"
+              />
+              {[
+                { code: 'hi', label: 'हिन्दी' },
+                { code: 'en', label: 'English' },
+                { code: 'ta', label: 'தமிழ்' },
+                { code: 'te', label: 'తెలుగు' },
+                { code: 'gu', label: 'ગુજરાતી' },
+              ].map((item) => (
+                <button
+                  key={item.code}
+                  onClick={() => setLang(item.code)}
+                  style={{
+                    padding: '0.28rem 0.45rem',
+                    fontSize: '0.76rem',
+                    fontWeight: lang === item.code ? '700' : '500',
+                    color: lang === item.code ? '#ffffff' : 'var(--text-secondary)',
+                    background: lang === item.code ? 'var(--gov-navy)' : 'transparent',
+                    borderRadius: 'var(--radius-sm)',
+                    transition: 'all var(--transition-fast)',
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  {item.label}
+                </button>
+              ))}
             </div>
 
             {/* Reading Mode Switcher (Kisan / Pro) */}
@@ -155,20 +242,22 @@ export default function Navbar({
               border: '1px solid var(--border-color)',
               borderRadius: 'var(--radius-sm)',
               padding: '2px',
+              flexShrink: 0,
             }}>
               <button
                 onClick={() => setMode('kisan')}
                 title={t.kisanModeDesc}
                 style={{
-                  padding: '0.35rem 0.75rem',
-                  fontSize: '0.82rem',
+                  padding: '0.3rem 0.65rem',
+                  fontSize: '0.78rem',
                   fontWeight: mode === 'kisan' ? '700' : '500',
                   color: mode === 'kisan' ? '#ffffff' : 'var(--text-secondary)',
-                  background: mode === 'kisan' ? 'var(--gov-green)' : 'transparent',
+                  background: mode === 'kisan' ? 'var(--gov-navy)' : 'transparent',
                   borderRadius: 'var(--radius-sm)',
                   display: 'flex',
                   alignItems: 'center',
                   gap: '0.3rem',
+                  whiteSpace: 'nowrap',
                 }}
               >
                 <Sprout size={13} />
@@ -179,8 +268,8 @@ export default function Navbar({
                 onClick={() => setMode('pro')}
                 title={t.proModeDesc}
                 style={{
-                  padding: '0.35rem 0.75rem',
-                  fontSize: '0.82rem',
+                  padding: '0.3rem 0.65rem',
+                  fontSize: '0.78rem',
                   fontWeight: mode === 'pro' ? '700' : '500',
                   color: mode === 'pro' ? '#ffffff' : 'var(--text-secondary)',
                   background: mode === 'pro' ? 'var(--gov-navy)' : 'transparent',
@@ -188,6 +277,7 @@ export default function Navbar({
                   display: 'flex',
                   alignItems: 'center',
                   gap: '0.3rem',
+                  whiteSpace: 'nowrap',
                 }}
               >
                 <FileText size={13} />
@@ -195,15 +285,15 @@ export default function Navbar({
               </button>
             </div>
 
-            {/* Font Size Adjuster */}
+            {/* Zoom / Font Size Adjuster */}
             <button
               onClick={cycleFont}
               className="btn btn-secondary"
-              title={`${t.fontSize}: ${fontScale}x`}
-              style={{ padding: '0.35rem 0.65rem', fontSize: '0.82rem' }}
+              title={`Zoom / Text Size: ${fontScale <= 0.95 ? 'Zoomed Out (90%)' : fontScale <= 1.05 ? 'Normal (100%)' : 'Zoomed In (115%)'}`}
+              style={{ padding: '0.3rem 0.55rem', fontSize: '0.78rem', flexShrink: 0 }}
             >
-              <ZoomIn size={14} />
-              <span>A{fontScale > 1 ? '+' : ''}</span>
+              <ZoomIn size={13} />
+              <span>{fontScale <= 0.95 ? 'A−' : fontScale > 1.05 ? 'A+' : 'A'}</span>
             </button>
 
             {/* Theme Toggle */}
@@ -211,11 +301,11 @@ export default function Navbar({
               onClick={cycleTheme}
               className="btn btn-secondary"
               title="Theme"
-              style={{ padding: '0.35rem 0.65rem' }}
+              style={{ padding: '0.3rem 0.55rem', flexShrink: 0 }}
             >
-              {theme === 'light' && <Sun size={14} color="#d97706" />}
-              {theme === 'dark' && <Moon size={14} color="#38bdf8" />}
-              {theme === 'warm' && <Sprout size={14} color="#16a34a" />}
+              {theme === 'light' && <Sun size={13} color="#d97706" />}
+              {theme === 'dark' && <Moon size={13} color="#38bdf8" />}
+              {theme === 'warm' && <Sprout size={13} color="#16a34a" />}
             </button>
 
             {/* Saved Bookmarks */}
@@ -224,17 +314,90 @@ export default function Navbar({
               className="btn btn-secondary"
               title={t.categories.bookmarks}
               style={{
-                padding: '0.35rem 0.75rem',
-                fontSize: '0.82rem',
+                padding: '0.3rem 0.65rem',
+                fontSize: '0.78rem',
                 fontWeight: activeCategory === 'bookmarks' ? '700' : '500',
                 background: activeCategory === 'bookmarks' ? 'var(--gov-navy-light)' : 'transparent',
                 borderColor: activeCategory === 'bookmarks' ? 'var(--gov-navy-border)' : 'var(--border-color)',
                 color: activeCategory === 'bookmarks' ? 'var(--gov-navy)' : 'inherit',
+                flexShrink: 0,
               }}
             >
-              <Bookmark size={14} fill={bookmarkCount > 0 ? "currentColor" : "none"} />
+              <Bookmark size={13} fill={bookmarkCount > 0 ? "currentColor" : "none"} />
               <span>{bookmarkCount}</span>
             </button>
+
+            {/* Desktop User Profile Avatar / Sign In Button */}
+            <div className="navbar-desktop-user">
+              {user ? (
+                <button
+                  onClick={onOpenProfile}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    background: 'var(--bg-subtle)',
+                    border: '1px solid var(--border-color)',
+                    borderRadius: '999px',
+                    padding: '2px 8px 2px 3px',
+                    cursor: 'pointer',
+                  }}
+                  title="Profile & Settings"
+                >
+                  {avatarUrl ? (
+                    <img
+                      src={avatarUrl}
+                      alt={displayName}
+                      style={{
+                        width: '26px',
+                        height: '26px',
+                        borderRadius: '50%',
+                        objectFit: 'cover',
+                      }}
+                    />
+                  ) : (
+                    <div
+                      style={{
+                        width: '26px',
+                        height: '26px',
+                        borderRadius: '50%',
+                        background: 'var(--gov-navy)',
+                        color: '#fff',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontSize: '0.76rem',
+                        fontWeight: '700',
+                      }}
+                    >
+                      {displayName?.[0]?.toUpperCase() || 'U'}
+                    </div>
+                  )}
+                  <span style={{ fontSize: '0.8rem', fontWeight: '700', color: 'var(--text-primary)', maxWidth: '90px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {displayName?.split(' ')[0] || 'Citizen'}
+                  </span>
+                </button>
+              ) : (
+                <button
+                  onClick={onOpenAuth}
+                  className="btn btn-secondary"
+                  style={{
+                    padding: '0.35rem 0.75rem',
+                    fontSize: '0.82rem',
+                    fontWeight: '700',
+                    color: 'var(--gov-navy)',
+                    borderColor: 'var(--border-dark)',
+                    background: 'var(--gov-navy-light)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                  }}
+                >
+                  <LogIn size={13} />
+                  <span>लॉग इन / Sign In</span>
+                </button>
+              )}
+            </div>
 
             {/* Live Refresh Button */}
             <button
@@ -242,7 +405,7 @@ export default function Navbar({
               disabled={isRefreshing}
               className="btn btn-primary"
               title={t.refresh}
-              style={{ padding: '0.35rem 0.85rem', fontSize: '0.82rem' }}
+              style={{ padding: '0.3rem 0.75rem', fontSize: '0.78rem', flexShrink: 0 }}
             >
               <RotateCw size={13} className={isRefreshing ? 'pulse-audio' : ''} />
               <span>{isRefreshing ? t.refreshing : t.refresh}</span>

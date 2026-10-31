@@ -2,20 +2,26 @@ import React, { useEffect, useRef, useState } from 'react';
 import { getLipSyncWeights } from '../utils/lipSyncEngine';
 import { getCurrentAudio, subscribeAudioEvents } from '../utils/voiceEngine';
 import { initAudioAnalyser } from '../utils/lipSyncEngine';
-import { Mic, ShieldCheck, UserCheck } from 'lucide-react';
+import { Mic } from 'lucide-react';
 
 export default function NewsAnchor3D({
   isPlaying = false,
   lang = 'hi',
   modelUrl = null,
+  isPiP = false,
 }) {
   const canvasRef = useRef(null);
   const isPlayingRef = useRef(isPlaying);
+  const isPiPRef = useRef(isPiP);
   const [mouthState, setMouthState] = useState({ open: 0, width: 0 });
 
   useEffect(() => {
     isPlayingRef.current = isPlaying;
   }, [isPlaying]);
+
+  useEffect(() => {
+    isPiPRef.current = isPiP;
+  }, [isPiP]);
 
   useEffect(() => {
     const activeAudio = getCurrentAudio();
@@ -54,9 +60,17 @@ export default function NewsAnchor3D({
       if (!isMounted) return;
       animationFrameId = requestAnimationFrame(render);
 
+      const displayW = canvas.clientWidth || 380;
+      const displayH = canvas.clientHeight || 480;
+      if (canvas.width !== displayW || canvas.height !== displayH) {
+        canvas.width = displayW;
+        canvas.height = displayH;
+      }
+
       const width = canvas.width;
       const height = canvas.height;
       const elapsed = (Date.now() - startTime) / 1000;
+      const pip = isPiPRef.current;
 
       const currentlyPlaying = isPlayingRef.current;
       const weights = getLipSyncWeights(currentlyPlaying);
@@ -87,12 +101,16 @@ export default function NewsAnchor3D({
       const speechNod = currentlyPlaying ? Math.sin(elapsed * 6.5) * (8 * weights.volume) : 0;
       const speechTilt = currentlyPlaying ? Math.cos(elapsed * 2.5) * 4 : Math.sin(elapsed * 0.8) * 2;
 
+      // Proportional scale factor so anchor's hair, face, neck, and blazer shoulders fit completely without cropping
+      const baseScale = Math.min(width / 340, height / 400);
+      const zoomFactor = (pip ? 1.35 : 0.80) * baseScale;
+      const centerY = (pip ? height * 0.52 : height * 0.48) + breathingSway;
       const centerX = width * 0.5;
-      const centerY = height * 0.46 + breathingSway;
 
       ctx.save();
       // Translate to head center for natural conversational nodding
       ctx.translate(centerX, centerY);
+      ctx.scale(zoomFactor, zoomFactor);
       ctx.rotate((speechTilt * Math.PI) / 180);
 
       // 3. Hair Back Volume (Behind Torso & Head)
@@ -374,29 +392,31 @@ export default function NewsAnchor3D({
 
       ctx.restore();
 
-      // 12. Studio News Desk (Clean Editorial Deep Slate & Chrome Edge)
-      const deskY = height * 0.76;
+      // 12. Studio News Desk (Rendered only in full Studio mode, hidden in PiP circle)
+      if (!pip) {
+        const deskY = height * 0.76;
 
-      ctx.fillStyle = '#0f172a';
-      ctx.fillRect(0, deskY, width, height - deskY);
+        ctx.fillStyle = '#0f172a';
+        ctx.fillRect(0, deskY, width, height - deskY);
 
-      // Glass Top Surface
-      const glassGrad = ctx.createLinearGradient(0, deskY, 0, deskY + 16);
-      glassGrad.addColorStop(0, '#334155');
-      glassGrad.addColorStop(0.3, '#1e293b');
-      glassGrad.addColorStop(1, '#0f172a');
-      ctx.fillStyle = glassGrad;
-      ctx.fillRect(0, deskY, width, 16);
+        // Glass Top Surface
+        const glassGrad = ctx.createLinearGradient(0, deskY, 0, deskY + 16);
+        glassGrad.addColorStop(0, '#334155');
+        glassGrad.addColorStop(0.3, '#1e293b');
+        glassGrad.addColorStop(1, '#0f172a');
+        ctx.fillStyle = glassGrad;
+        ctx.fillRect(0, deskY, width, 16);
 
-      // Saffron/Gold Accent Strip
-      ctx.fillStyle = '#f59e0b';
-      ctx.fillRect(0, deskY, width, 3);
+        // Saffron/Gold Accent Strip
+        ctx.fillStyle = '#f59e0b';
+        ctx.fillRect(0, deskY, width, 3);
 
-      // Official National Desk Emblem
-      ctx.fillStyle = '#f8fafc';
-      ctx.font = '700 11px Inter, sans-serif';
-      ctx.textAlign = 'center';
-      ctx.fillText('🏛️ BHARATVANI • OFFICIAL NEWSROOM DESK', width * 0.5, deskY + 36);
+        // Official National Desk Emblem
+        ctx.fillStyle = '#f8fafc';
+        ctx.font = '700 11px Inter, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('🏛️ BHARATVANI • OFFICIAL NEWSROOM DESK', width * 0.5, deskY + 36);
+      }
     };
 
     render();
@@ -405,57 +425,66 @@ export default function NewsAnchor3D({
       isMounted = false;
       cancelAnimationFrame(animationFrameId);
     };
-  }, []);
+  }, [isPiP]);
 
   return (
-    <div style={{ position: 'relative', width: '100%', height: '100%', minHeight: '380px', background: '#f8fafc', overflow: 'hidden' }}>
+    <div style={{
+      position: 'relative',
+      width: '100%',
+      height: '100%',
+      minHeight: isPiP ? '100%' : '240px',
+      background: '#f8fafc',
+      overflow: 'hidden',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+    }}>
       <canvas
         ref={canvasRef}
-        width={380}
-        height={480}
         style={{
           width: '100%',
           height: '100%',
           display: 'block',
-          objectFit: 'contain',
         }}
       />
 
-      {/* Top Status Badge */}
-      <div style={{
-        position: 'absolute',
-        top: '0.75rem',
-        right: '0.75rem',
-        background: '#ffffff',
-        border: '1px solid #cbd5e1',
-        borderRadius: 'var(--radius-sm)',
-        padding: '0.2rem 0.6rem',
-        fontSize: '0.72rem',
-        fontWeight: '700',
-        color: '#0f172a',
-        display: 'flex',
-        alignItems: 'center',
-        gap: '0.35rem',
-        boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
-      }}>
-        <span
-          style={{
-            width: '6px',
-            height: '6px',
-            borderRadius: '50%',
-            backgroundColor: isPlaying ? '#16a34a' : '#94a3b8',
-            boxShadow: isPlaying ? '0 0 6px #16a34a' : 'none',
-          }}
-        />
-        <span>
-          {isPlaying
-            ? (lang === 'hi' ? 'लाइव AI एंकर (Lip-Sync On)' : 'Live AI Presenter (Lip-Sync On)')
-            : (lang === 'hi' ? 'AI एंकर तैयार' : 'AI Presenter Ready')}
-        </span>
-      </div>
+      {/* Top Status Badge (Only shown in full Studio mode) */}
+      {!isPiP && (
+        <div style={{
+          position: 'absolute',
+          top: '0.75rem',
+          right: '0.75rem',
+          background: '#ffffff',
+          border: '1px solid #cbd5e1',
+          borderRadius: 'var(--radius-sm)',
+          padding: '0.2rem 0.6rem',
+          fontSize: '0.72rem',
+          fontWeight: '700',
+          color: '#0f172a',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '0.35rem',
+          boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
+        }}>
+          <span
+            style={{
+              width: '6px',
+              height: '6px',
+              borderRadius: '50%',
+              backgroundColor: isPlaying ? '#16a34a' : '#94a3b8',
+              boxShadow: isPlaying ? '0 0 6px #16a34a' : 'none',
+            }}
+          />
+          <span>
+            {isPlaying
+              ? (lang === 'hi' ? 'लाइव AI एंकर (Lip-Sync On)' : 'Live AI Presenter (Lip-Sync On)')
+              : (lang === 'hi' ? 'AI एंकर तैयार' : 'AI Presenter Ready')}
+          </span>
+        </div>
+      )}
 
-      {/* Live Audio Volume Indicator */}
-      {isPlaying && (
+      {/* Live Audio Volume Indicator (Only in full Studio mode) */}
+      {!isPiP && isPlaying && (
         <div style={{
           position: 'absolute',
           bottom: '0.75rem',

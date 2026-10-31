@@ -19,10 +19,10 @@ export default function AudioPlayerBar({
   return (
     <div className="audio-bar-sticky">
       {/* Playing Status & Title */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem', overflow: 'hidden', flex: 1 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem', overflow: 'hidden', flex: 1, minWidth: 0 }}>
         <div style={{
-          width: '36px',
-          height: '36px',
+          width: '32px',
+          height: '32px',
           borderRadius: 'var(--radius-sm)',
           background: '#15803d',
           display: 'flex',
@@ -31,12 +31,12 @@ export default function AudioPlayerBar({
           color: '#ffffff',
           flexShrink: 0,
         }}>
-          <Volume2 size={18} />
+          <Volume2 size={16} />
         </div>
 
-        <div style={{ overflow: 'hidden' }}>
+        <div style={{ overflow: 'hidden', minWidth: 0 }}>
           <div style={{
-            fontSize: '0.72rem',
+            fontSize: '0.68rem',
             fontWeight: '700',
             color: '#4ade80',
             textTransform: 'uppercase',
@@ -45,11 +45,11 @@ export default function AudioPlayerBar({
             alignItems: 'center',
             gap: '0.35rem',
           }}>
-            <span className="live-pulse" style={{ backgroundColor: '#22c55e' }}></span>
-            {isPaused ? t.pauseAudio : t.audioPlayerTitle}
+            <span className="live-pulse" style={{ backgroundColor: '#22c55e', width: '5px', height: '5px' }}></span>
+            <span>{isPaused ? t.pauseAudio : t.audioPlayerTitle}</span>
           </div>
           <div style={{
-            fontSize: '0.88rem',
+            fontSize: '0.84rem',
             fontWeight: '600',
             color: '#ffffff',
             whiteSpace: 'nowrap',

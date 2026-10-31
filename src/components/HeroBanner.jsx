@@ -1,7 +1,7 @@
 import React from 'react';
 import { Volume2, ChevronRight, Building2, ShieldCheck, Film, Check } from 'lucide-react';
 import { translations } from '../translations';
-import { THEME_VISUALS } from '../../server/geminiService';
+import { THEME_VISUALS, resolveContextualVisuals } from '../../server/geminiService';
 
 export default function HeroBanner({
   article,
@@ -17,31 +17,21 @@ export default function HeroBanner({
 
   const t = translations[lang];
   const isThisAudioPlaying = isPlaying && currentAudioId === article.id;
-  const categoryVisuals = THEME_VISUALS[article.category] || THEME_VISUALS.governance;
-  const heroImage = categoryVisuals[0];
+  const visuals = resolveContextualVisuals ? resolveContextualVisuals(article) : (THEME_VISUALS[article.category] || THEME_VISUALS.governance);
+  const heroImage = visuals[0];
 
   return (
-    <section style={{
-      background: 'var(--bg-card)',
-      border: '1px solid var(--border-color)',
-      borderRadius: 'var(--radius-md)',
-      overflow: 'hidden',
-      boxShadow: 'var(--shadow-sm)',
-      marginTop: '1.25rem',
-      display: 'grid',
-      gridTemplateColumns: 'minmax(320px, 1.2fr) minmax(280px, 1fr)',
-      gap: 0,
-    }}>
+    <section className="hero-banner-container">
       {/* Left Editorial Content Column */}
       <div style={{
-        padding: '2rem 2.25rem',
+        padding: '1.35rem',
         display: 'flex',
         flexDirection: 'column',
         justifyContent: 'space-between',
       }}>
         <div>
           {/* Masthead Tag & Ministry */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem', marginBottom: '0.75rem', flexWrap: 'wrap' }}>
             <span style={{
               background: '#dc2626',
               color: '#ffffff',
@@ -75,12 +65,12 @@ export default function HeroBanner({
           <h2
             onClick={() => onOpenArticle(article)}
             style={{
-              fontSize: '1.75rem',
+              fontSize: '1.45rem',
               fontWeight: '800',
               lineHeight: 1.3,
               color: 'var(--text-primary)',
               cursor: 'pointer',
-              marginBottom: '1rem',
+              marginBottom: '0.75rem',
               letterSpacing: '-0.02em',
             }}
           >
@@ -150,14 +140,17 @@ export default function HeroBanner({
       </div>
 
       {/* Right Editorial Photography Banner */}
-      <div style={{
-        position: 'relative',
-        minHeight: '280px',
-        backgroundImage: `url(${heroImage})`,
-        backgroundSize: 'cover',
-        backgroundPosition: 'center',
-        borderLeft: '1px solid var(--border-color)',
-      }}>
+      <div
+        className="hero-banner-image"
+        style={{
+          position: 'relative',
+          minHeight: '280px',
+          backgroundImage: `url(${heroImage})`,
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+          borderLeft: '1px solid var(--border-color)',
+        }}
+      >
         <div style={{
           position: 'absolute',
           bottom: '1rem',

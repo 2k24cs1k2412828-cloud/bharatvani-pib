@@ -1,18 +1,18 @@
 // Document Parsing, Chunking & Token Extraction Engine
 
-// Number & Numerical Metric Regular Expressions
+// Number & Numerical Metric Regular Expressions (Multilingual: Hindi, English, Tamil, Telugu, Gujarati)
 export const NUMBER_PATTERNS = {
-  // Money & Budget Allocations (₹, Rs, Crore, Lakh, Million, Billion)
-  money: /(?:₹|Rs\.?|INR)\s*[\d,]+(?:\.\d+)?\s*(?:करोड़|लाख|हजार|crore|cr|lakh|thousand|million|billion|trillion)?|[\d,]+(?:\.\d+)?\s*(?:करोड़|लाख|crore|cr|lakh|million|billion)\s*(?:रुपये|रु|₹|rupees|inr)?/gi,
+  // Money & Budget Allocations (₹, Rs, Crore, Lakh, கோடி, கோట్లు, કરોડ)
+  money: /(?:₹|Rs\.?|INR|ரூபாய்|ரூ|రూపాయలు|రూ|રૂપિયા|રૂ)\s*[\d,]+(?:\.\d+)?\s*(?:करोड़|लाख|हजार|crore|cr|lakh|thousand|million|billion|trillion|கோடி|லட்சம்|ஆயிரம்|కోట్లు|లక్షలు|వేలు|કરોડ|લાખ|હજાર)?|[\d,]+(?:\.\d+)?\s*(?:करोड़|लाख|crore|cr|lakh|million|billion|கோடி|லட்சம்|కోట్లు|లక్షలు|કરોડ|લાખ)\s*(?:रुपये|रु|₹|rupees|inr|ரூபாய்|ரூపాయలు|રૂપિયા)?/gi,
   
-  // Percentages & Rates (%, प्रतिशत)
-  percentage: /[\d,]+(?:\.\d+)?\s*(?:%|प्रतिशत|percent|percentage)/gi,
+  // Percentages & Rates (%, प्रतिशत, சதவீதம், శాతం, ટકા)
+  percentage: /[\d,]+(?:\.\d+)?\s*(?:%|प्रतिशत|சதவீதம்|శాతం|ટકા|percent|percentage)/gi,
   
   // Quantities & Units (MW, GW, tonnes, hectares, districts, farmers, villages, centres)
-  quantity: /[\d,]+(?:\.\d+)?\s*(?:टन|हेक्टेयर|मेगावाट|गीगावाट|जिले|गाँव|किसान|केंद्र|पंप|tonnes|tons|hectares|ha|mw|gw|districts|villages|farmers|centres|units|pumps|beneficiaries|quintal|mt)/gi,
+  quantity: /[\d,]+(?:\.\d+)?\s*(?:टन|हेक्टेयर|मेगावाट|गीगावाट|जिले|गाँव|किसान|केंद्र|पंप|டன்கள்|ஹெக்டேர்|மெகாவாட்|விவசாயிகள்|టన్నులు|హెక్టార్లు|మెగావాట్|రైతులు|ટન|હેક્ટર|મેગાવોટ|ખેડૂતો|tonnes|tons|hectares|ha|mw|gw|districts|villages|farmers|centres|units|pumps|beneficiaries|quintal|mt)/gi,
   
   // Dates & Years (e.g. 19 August 2026, 2026-27, FY26)
-  date: /\b\d{1,2}\s+(?:जनवरी|फरवरी|मार्च|अप्रैल|मई|जून|जुलाई|अगस्त|सितंबर|अक्टूबर|नवंबर|दिसंबर|January|February|March|April|May|June|July|August|September|October|November|December|Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+\d{4}\b|\b\d{4}-\d{2,4}\b|\bFY\s*\d{2,4}\b/gi,
+  date: /\b\d{1,2}\s+(?:जनवरी|फरवरी|मार्च|अप्रैल|मई|जून|जुलाई|अगस्त|सितंबर|अक्टूबर|नवंबर|दिसंबर|January|February|March|April|May|June|July|August|September|October|November|December|Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec|ஜனவரி|பிப்ரவரி|மார்ச்|ஏப்ரல்|மே|ஜூன்|ஜூலை|ஆகஸ்ட்|செப்டம்பர்|அக்டோபர்|நவம்பர்|டிசம்பர்|జనవరి|ఫిబ్రవరి|మార్చి|ఏప్రిల్|మే|జూన్|జూలై|ఆగస్టు|సెప్టెంబర్|అక్టోబర్|నవంబర్|డిసెంబర్|જાન્યુઆરી|ફેબ્રુઆરી|માર્ચ|એપ્રિલ|મે|જૂન|જુલાઈ|ઓગસ્ટ|સપ્ટેમ્બર|ઓક્ટોબર|નવેમ્બર|ડિસેમ્બર)\s+\d{4}\b|\b\d{4}-\d{2,4}\b|\bFY\s*\d{2,4}\b/gi,
 };
 
 // Normalize text for strict deterministic comparison

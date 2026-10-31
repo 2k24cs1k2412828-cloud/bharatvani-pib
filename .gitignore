@@ -6,3 +6,8 @@ dist/
 server/node_modules/
 __pycache__/
 *.pyc
+text2video_demo/venv/
+text2video_demo/generated_videos/*.mp4
+text2video_demo/api_spec.json
+media/
+*.mp4

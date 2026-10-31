@@ -11,7 +11,7 @@ import {
   Check
 } from 'lucide-react';
 import { translations } from '../translations';
-import { THEME_VISUALS } from '../../server/geminiService';
+import { THEME_VISUALS, resolveContextualVisuals } from '../../server/geminiService';
 
 export default function NewsCard({
   article,
@@ -30,8 +30,8 @@ export default function NewsCard({
   const isThisAudioPlaying = isPlaying && currentAudioId === article.id;
   const isKisan = mode === 'kisan';
 
-  // Get themed editorial thumbnail
-  const visuals = THEME_VISUALS[article.category] || THEME_VISUALS.governance;
+  // Get themed editorial thumbnail matched to exact context
+  const visuals = resolveContextualVisuals ? resolveContextualVisuals(article) : (THEME_VISUALS[article.category] || THEME_VISUALS.governance);
   const cardImage = visuals[0];
 
   const handleShare = (e) => {

@@ -60,7 +60,31 @@ function verifyEvidenceInSource(quote = '', chunks = []) {
 // Fallback rule-based claim extractor when offline or without LLM key
 function generateRuleBasedClaims(chunks = [], lang = 'hi') {
   const claims = [];
-  const isHindi = lang === 'hi';
+  const safeLang = ['hi', 'en', 'ta', 'te', 'gu'].includes(lang) ? lang : 'hi';
+
+  const defaultSubjects = {
+    hi: 'भारत सरकार / अधिकृत संस्था',
+    en: 'Government of India / Authorized Agency',
+    ta: 'இந்திய அரசு / அங்கீகரிக்கப்பட்ட அமைப்பு',
+    te: 'భారత ప్రభుత్వం / అధికారిక సంస్థ',
+    gu: 'ભારત સરકાર / અધિકૃત સંસ્થા',
+  };
+
+  const defaultActions = {
+    hi: 'घोषणा एवं क्रियान्वयन',
+    en: 'Policy Announcement & Execution',
+    ta: 'அறிவிப்பு & அமலாக்கம்',
+    te: 'ప్రకటన & అమలు',
+    gu: 'જાહેરાત અને અમલીકરણ',
+  };
+
+  const defaultTargets = {
+    hi: 'आधिकारिक दिशानिर्देश',
+    en: 'Official Guidelines',
+    ta: 'அதிகாரப்பூர்வ வழிகாட்டுதல்',
+    te: 'అధికారిక మార్గదర్శకాలు',
+    gu: 'સત્તાવાર માર્ગદર્શિકા',
+  };
 
   chunks.slice(0, 4).forEach((chunk, idx) => {
     const text = chunk.text;
@@ -69,9 +93,9 @@ function generateRuleBasedClaims(chunks = [], lang = 'hi') {
     claims.push({
       claimId: `C${idx + 1}`,
       statement: text.slice(0, 140),
-      subject: isHindi ? 'भारत सरकार / अधिकृत संस्था' : 'Government of India / Authorized Agency',
-      action: isHindi ? 'घोषणा एवं क्रियान्वयन' : 'Policy Announcement & Execution',
-      targetQuantity: num || (isHindi ? 'आधिकारिक दिशानिर्देश' : 'Official Guidelines'),
+      subject: defaultSubjects[safeLang] || defaultSubjects.hi,
+      action: defaultActions[safeLang] || defaultActions.hi,
+      targetQuantity: num || defaultTargets[safeLang] || 'Official Guidelines',
       evidenceQuote: text,
       status: 'VERIFIED_GROUNDED',
       groundingScore: 100,
@@ -91,7 +115,7 @@ export async function extractAndVerifyFacts({
   apiKey = '',
 }) {
   const fullText = rawText || `${article.title}. ${article.description || ''}`;
-  const isHindi = lang === 'hi';
+  const safeLang = ['hi', 'en', 'ta', 'te', 'gu'].includes(lang) ? lang : 'hi';
 
   // 1. DETERMINISTIC PASS: Parse Document into verifiable chunks & extract numbers
   const chunks = parseDocumentChunks(fullText);
@@ -100,6 +124,15 @@ export async function extractAndVerifyFacts({
 
   let proposedClaims = [];
   const keyToUse = process.env.GEMINI_API_KEY || apiKey;
+
+  const langNames = {
+    hi: 'Hindi (Devanagari)',
+    en: 'English',
+    ta: 'Tamil (தமிழ் script)',
+    te: 'Telugu (తెలుగు script)',
+    gu: 'Gujarati (ગુજરાતી script)',
+  };
+  const targetLangName = langNames[safeLang] || 'Hindi';
 
   // 2. LLM PASS: Propose atomic claims with evidence quotes
   if (keyToUse && typeof keyToUse === 'string' && keyToUse.trim()) {
@@ -116,13 +149,14 @@ ${fullText.slice(0, 3000)}
 REQUIREMENTS:
 1. Break down into atomic claims (Subject -> Action -> Target/Quantity).
 2. Each claim MUST include the EXACT quote ("evidenceQuote") copied directly from the source text where this fact is stated.
-3. Never invent or hallucinate any numbers or figures.
+3. Formulate the statement in ${targetLangName}.
+4. Never invent or hallucinate any numbers or figures.
 
 Respond ONLY with a JSON array of objects:
 [
   {
     "claimId": "C1",
-    "statement": "Clear 1-sentence statement of the claim in ${isHindi ? 'Hindi' : 'English'}",
+    "statement": "Clear 1-sentence statement of the claim in ${targetLangName}",
     "subject": "Subject entity (e.g. Ministry, Government, Agency)",
     "action": "Action (e.g. approved, allocated, launched, conducted)",
     "targetQuantity": "Exact number or target (e.g. ₹2,400 crore, 12 districts, 70%)",
