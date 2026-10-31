@@ -1,10 +1,17 @@
+import dns from 'dns';
+import https from 'https';
 import axios from 'axios';
 import * as cheerio from 'cheerio';
 import xml2js from 'xml2js';
 import { translateArticle, translateArticleDetail } from './translator.js';
 
+// Enforce IPv4-first to prevent socket hang-ups and ETIMEDOUT on PIB government servers
+dns.setDefaultResultOrder('ipv4first');
+const httpsAgent = new https.Agent({ family: 4, keepAlive: true });
+
 const PIB_URLS = {
   hi_rss: 'https://pib.gov.in/RssMain.aspx?ModId=6&Lang=2&Regid=3',
+  en_rss: 'https://pib.gov.in/RssMain.aspx?ModId=6&Lang=1&Regid=3',
   hi_page: 'https://pib.gov.in/Allrel.aspx?reg=3&lang=2',
   en_page: 'https://pib.gov.in/Allrel.aspx?reg=3&lang=1',
   ta_rss: 'https://pib.gov.in/RssMain.aspx?ModId=6&Lang=8&Regid=3',
@@ -89,7 +96,7 @@ export function isHindiText(str = '') {
   return /[\u0900-\u097F]/.test(str);
 }
 
-// Scrape / Fetch PIB Feed according to Language
+// Scrape / Fetch PIB Feed according to Language (Always Live & Synchronized)
 export async function fetchPibFeed(lang = 'hi', forceRefresh = false) {
   const now = Date.now();
   const safeLang = ['hi', 'en', 'ta', 'te', 'gu'].includes(lang) ? lang : 'hi';
@@ -99,70 +106,14 @@ export async function fetchPibFeed(lang = 'hi', forceRefresh = false) {
     return cached.data;
   }
 
-  if (safeLang === 'en') {
-    // 1. ENGLISH FEED SCRAPER
-    try {
-      const response = await axios.get(PIB_URLS.en_page, {
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-        },
-        timeout: 10000,
-      });
-
-      const $ = cheerio.load(response.data);
-      const items = [];
-
-      $('a').each((_, el) => {
-        const href = $(el).attr('href') || '';
-        const title = $(el).text().trim();
-        
-        if (
-          (href.includes('PRID=') || href.includes('PressReleaseDetail') || href.includes('PressReleasePage')) &&
-          title.length > 15 &&
-          !isHindiText(title) &&
-          !title.toLowerCase().includes('skip to') &&
-          !title.toLowerCase().includes('screen reader')
-        ) {
-          const pridMatch = href.match(/PRID=(\d+)/i);
-          const prid = pridMatch ? pridMatch[1] : `pib-en-${items.length + 1}`;
-
-          if (!items.some((i) => i.id === prid || i.title === title)) {
-            const category = categorizeArticle(title, '');
-            items.push({
-              id: prid,
-              prid: prid,
-              title: title.replace(/&amp;/g, '&').replace(/&quot;/g, '"'),
-              link: href.startsWith('http') ? href : `https://pib.gov.in${href.startsWith('/') ? '' : '/'}${href}`,
-              iframeLink: `https://pib.gov.in/PressReleaseIframePage.aspx?PRID=${prid}`,
-              pubDate: new Date().toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' }),
-              description: `Official press release from Government of India regarding ${title}.`,
-              category: category,
-              lang: 'en',
-              source: 'Press Information Bureau (PIB), GoI',
-            });
-          }
-        }
-      });
-
-      if (items.length > 0) {
-        const allEn = [...items, ...getFallbackData('en').filter((fb) => !items.some((it) => it.id === fb.id))];
-        cache.en = { data: allEn, timestamp: now };
-        return allEn;
-      }
-    } catch (err) {
-      console.error('[Scraper] Error fetching English PIB page:', err.message);
-    }
-
-    const fallbackEn = getFallbackData('en');
-    cache.en = { data: fallbackEn, timestamp: now };
-    return fallbackEn;
-
-  } else if (safeLang === 'hi') {
-    // 2. MASTER HINDI RSS FEED SCRAPER
+  // Helper to fetch live Hindi master RSS feed
+  const fetchLiveHindiFeed = async () => {
     try {
       const response = await axios.get(PIB_URLS.hi_rss, {
+        httpsAgent,
         headers: {
           'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+          Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
         },
         timeout: 10000,
       });
@@ -172,15 +123,14 @@ export async function fetchPibFeed(lang = 'hi', forceRefresh = false) {
       const rawItems = parsed?.rss?.channel?.item || [];
       const itemsArray = Array.isArray(rawItems) ? rawItems : (rawItems ? [rawItems] : []);
 
-      const articles = itemsArray.map((item, idx) => {
-        const title = item.title || 'प्रेस विज्ञप्ति';
+      const todayIso = new Date().toISOString();
+
+      return itemsArray.map((item, idx) => {
+        const title = (item.title || 'प्रेस विज्ञप्ति').trim();
         const link = item.link || '';
-        const pubDate = item.pubDate || new Date().toISOString();
-        const description = item.description || '';
-        
         const pridMatch = link.match(/PRID=(\d+)/i);
-        const prid = pridMatch ? pridMatch[1] : `pib-hi-${idx}`;
-        const category = categorizeArticle(title, description);
+        const prid = pridMatch ? pridMatch[1] : `pib-hi-${idx + 1}`;
+        const category = categorizeArticle(title, '');
 
         return {
           id: prid,
@@ -188,54 +138,83 @@ export async function fetchPibFeed(lang = 'hi', forceRefresh = false) {
           title: title.replace(/&amp;/g, '&').replace(/&quot;/g, '"'),
           link: link || `https://pib.gov.in/PressReleasePage.aspx?PRID=${prid}`,
           iframeLink: `https://pib.gov.in/PressReleaseIframePage.aspx?PRID=${prid}`,
-          pubDate: pubDate,
-          description: description || `भारत सरकार द्वारा जारी आधिकारिक प्रेस विज्ञप्ति: ${title}`,
+          pubDate: todayIso,
+          date: todayIso,
+          description: `भारत सरकार द्वारा जारी आधिकारिक प्रेस विज्ञप्ति: ${title}`,
           category: category,
           lang: 'hi',
           source: 'Press Information Bureau (PIB), GoI',
         };
       });
-
-      const fallbacks = getFallbackData('hi');
-      const combined = [...articles, ...fallbacks.filter((fb) => !articles.some((it) => it.id === fb.id))];
-      cache.hi = { data: combined, timestamp: now };
-      return combined;
     } catch (err) {
-      console.error('[Scraper] Error fetching Hindi PIB feed:', err.message);
+      console.error('[Scraper] Error fetching live Hindi PIB RSS:', err.message);
+      return [];
     }
+  };
 
+  // 1. Hindi Live Feed
+  if (safeLang === 'hi') {
+    const liveHindi = await fetchLiveHindiFeed();
+    if (liveHindi.length > 0) {
+      cache.hi = { data: liveHindi, timestamp: now };
+      return liveHindi;
+    }
     const fallbackHi = getFallbackData('hi');
     cache.hi = { data: fallbackHi, timestamp: now };
     return fallbackHi;
+  }
 
-  } else {
-    // 3. REGIONAL FEEDS (Tamil, Telugu, Gujarati) - Full Master Feed with Cross-Lingual Translation
-    try {
-      // First obtain full national live feed
-      const masterFeed = await fetchPibFeed('hi', forceRefresh);
-      const fallbacks = getFallbackData(safeLang);
-
-      // Translate all master articles in parallel into the target regional language
-      const translatedMaster = await Promise.all(
-        masterFeed.map((art) => translateArticle(art, safeLang))
-      );
-
-      // Merge native regional curated articles at the top with translated live feed
-      const mergedList = [
-        ...fallbacks,
-        ...translatedMaster.filter((tm) => !fallbacks.some((fb) => fb.id === tm.id || fb.prid === tm.prid)),
-      ];
-
-      cache[safeLang] = { data: mergedList, timestamp: now };
-      return mergedList;
-    } catch (err) {
-      console.error(`[Scraper] Error generating multilingual feed for ${safeLang}:`, err.message);
+  // 2. English Live Feed
+  if (safeLang === 'en') {
+    let masterFeed = cache.hi.data;
+    if (!masterFeed || masterFeed.length === 0 || forceRefresh) {
+      masterFeed = await fetchLiveHindiFeed();
+      if (masterFeed.length > 0) {
+        cache.hi = { data: masterFeed, timestamp: now };
+      }
     }
 
-    const fallbackRegional = getFallbackData(safeLang);
-    cache[safeLang] = { data: fallbackRegional, timestamp: now };
-    return fallbackRegional;
+    if (masterFeed.length > 0) {
+      try {
+        const translatedEn = await Promise.all(
+          masterFeed.map((art) => translateArticle(art, 'en'))
+        );
+        cache.en = { data: translatedEn, timestamp: now };
+        return translatedEn;
+      } catch (err) {
+        console.error('[Scraper] Translation error for EN:', err.message);
+      }
+    }
+
+    const fallbackEn = getFallbackData('en');
+    cache.en = { data: fallbackEn, timestamp: now };
+    return fallbackEn;
   }
+
+  // 3. Regional Live Feeds (ta, te, gu)
+  let masterFeed = cache.hi.data;
+  if (!masterFeed || masterFeed.length === 0 || forceRefresh) {
+    masterFeed = await fetchLiveHindiFeed();
+    if (masterFeed.length > 0) {
+      cache.hi = { data: masterFeed, timestamp: now };
+    }
+  }
+
+  if (masterFeed.length > 0) {
+    try {
+      const translatedRegional = await Promise.all(
+        masterFeed.map((art) => translateArticle(art, safeLang))
+      );
+      cache[safeLang] = { data: translatedRegional, timestamp: now };
+      return translatedRegional;
+    } catch (err) {
+      console.error(`[Scraper] Regional translation error for ${safeLang}:`, err.message);
+    }
+  }
+
+  const fallbackRegional = getFallbackData(safeLang);
+  cache[safeLang] = { data: fallbackRegional, timestamp: now };
+  return fallbackRegional;
 }
 
 // Fetch Full Article Details from PIB

@@ -1,4 +1,13 @@
+import dns from 'dns';
+import https from 'https';
 import axios from 'axios';
+import { execFile } from 'child_process';
+import util from 'util';
+
+const execFilePromise = util.promisify(execFile);
+
+dns.setDefaultResultOrder('ipv4first');
+const httpsAgent = new https.Agent({ family: 4, keepAlive: true });
 
 // In-memory translation cache: Map<`${targetLang}___${cleanText}`, translatedText>
 const translationCache = new Map();
@@ -18,17 +27,26 @@ export async function translateText(text = '', targetLang = 'en') {
     return translationCache.get(cacheKey);
   }
 
+  // 1. Try curl directly (most reliable, avoids node 429/IPv6 issues)
   try {
-    const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=${targetLang}&dt=t&q=${encodeURIComponent(clean)}`;
-    const response = await axios.get(url, {
-      timeout: 8000,
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-      },
-    });
+    const { stdout } = await execFilePromise(
+      'curl',
+      [
+        '-s',
+        '-G',
+        'https://translate.googleapis.com/translate_a/single',
+        '--data-urlencode', 'client=gtx',
+        '--data-urlencode', 'sl=auto',
+        '--data-urlencode', `tl=${targetLang}`,
+        '--data-urlencode', 'dt=t',
+        '--data-urlencode', `q=${clean}`,
+      ],
+      { timeout: 5000 }
+    );
 
-    if (response.data && Array.isArray(response.data[0])) {
-      const translated = response.data[0].map((item) => item[0]).filter(Boolean).join('');
+    const parsed = JSON.parse(stdout);
+    if (parsed && Array.isArray(parsed[0])) {
+      const translated = parsed[0].map((item) => item[0]).filter(Boolean).join('');
       if (translated) {
         if (translationCache.size > 5000) {
           const firstKey = translationCache.keys().next().value;
@@ -38,8 +56,25 @@ export async function translateText(text = '', targetLang = 'en') {
         return translated;
       }
     }
-  } catch (err) {
-    console.warn(`[Translator] Failed to translate text to ${targetLang}:`, err.message);
+  } catch (curlErr) {
+    // 2. Fallback to axios if curl failed
+    try {
+      const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=${targetLang}&dt=t&q=${encodeURIComponent(clean)}`;
+      const response = await axios.get(url, {
+        httpsAgent,
+        timeout: 4000,
+      });
+
+      if (response.data && Array.isArray(response.data[0])) {
+        const translated = response.data[0].map((item) => item[0]).filter(Boolean).join('');
+        if (translated) {
+          translationCache.set(cacheKey, translated);
+          return translated;
+        }
+      }
+    } catch (err) {
+      console.warn(`[Translator] Failed to translate text to ${targetLang}:`, err.message);
+    }
   }
 
   return clean;
